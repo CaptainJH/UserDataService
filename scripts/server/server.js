@@ -100,7 +100,7 @@ app.get('/find/:id/:mac/:date/:info', function(request, response) {
 						response.contentType('json');
 						response.send(RemoveRawProp(map_list));
 					}); 
-		})
+		});
 });
 
 app.get('/findall/:id', function(request, response) {	
@@ -114,7 +114,7 @@ app.get('/findall/:id', function(request, response) {
 					response.contentType('json');
 					response.send(RemoveRawProp(map_list));
 				});
-		})
+		});
 });
 
 app.get('/findlatest/:id', function(request, response) {
@@ -136,7 +136,7 @@ app.get('/findlatest/:id', function(request, response) {
 					}
 					response.send(RemoveRawProp(map_list[latest]));
 				});
-		})
+		});
 });
 
 app.get('/findatdate/:id/:date', function(request, response) {
@@ -150,8 +150,38 @@ app.get('/findatdate/:id/:date', function(request, response) {
 						response.contentType('json');
 						response.send(RemoveRawProp(map_list));
 					}); 
-		})
+		});
 });
+
+app.get('/distinct/:key', function(request, response) {
+	var key = request.params.key;
+	
+	dbHandle.collection(
+		doc, 
+		function(outer_error, collection) {
+			collection.distinct(key, function(inner_error, map_list) {
+				response.contentType('json');
+				response.send(map_list);
+			});
+		});
+});
+
+app.get('/count/:id/:mac/:date/:info', function(request, response) {
+	var requestObj = BuildRequestObject(request.params.id,
+		request.params.mac,
+		request.params.date,
+		request.params.info);
+		
+	dbHandle.collection(
+		doc, 
+		function(outer_error, collection) {
+			collection.count(requestObj, function(inner_error, count) {
+						response.contentType('text/plain');
+						response.send(count.toString());
+					}); 
+		});
+});
+
 app.post('/', function(request, response) {
 	response.send('POST response!\n');
 });
