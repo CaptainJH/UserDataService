@@ -46,13 +46,70 @@ app.get('/', function(request, response) {
 });
 
 ///// CRUD
+function BuildRequestObject(id, macAddress, date, info)
+{
+	var requestObj = {$and:[]};
+	
+	if(id !== 'NA')
+	{
+		requestObj['$and'].push( {qq : parseInt(id)} );
+	}
+	
+	if(macAddress !== 'NA')
+	{
+		requestObj['$and'].push( {mac : macAddress} );
+	}
+	
+	if(date !== 'NA')
+	{
+		var padCount = 14 - date.length;
+		var floorPad = '';
+		var cellPad = '';
+		for(var i = 0; i < padCount; ++i)
+		{
+			floorPad += '0';
+			cellPad += '9';
+		}
+		
+		requestObj['$and'].push( {
+			$and : [
+				{log_id : {$gt : parseInt(date + floorPad)} },
+				{log_id : {$lt : parseInt(date + cellPad)} }
+			]
+		});
+	}
+	
+	if(info !== 'NA')
+	{
+		requestObj['$and'].push( {info: '/' + info + '/i'} );
+	}
+	
+	//console.log(requestObj);
+	return requestObj;
+}
+app.get('/find/:id/:mac/:date/:info', function(request, response) {
+	var requestObj = BuildRequestObject(request.params.id,
+		request.params.mac,
+		request.params.date,
+		request.params.info);
+	
+	dbHandle.collection(
+		doc, 
+		function(outer_error, collection) {
+			collection.find(requestObj).toArray( function(inner_error, map_list) {
+						response.contentType('json');
+						response.send(RemoveRawProp(map_list));
+					}); 
+		})
+});
+
 app.get('/findall/:id', function(request, response) {	
+	var requestObj = BuildRequestObject(request.params.id, 'NA', 'NA', 'NA');
 	
 	dbHandle.collection(
 		doc,
 		function(outer_error, collection) {
-			console.log(request.params.id);
-			collection.find({qq:parseInt(request.params.id)}).toArray(
+			collection.find(requestObj).toArray(
 				function(inner_error, map_list) {
 					response.contentType('json');
 					response.send(RemoveRawProp(map_list));
@@ -61,10 +118,12 @@ app.get('/findall/:id', function(request, response) {
 });
 
 app.get('/findlatest/:id', function(request, response) {
+	var requestObj = BuildRequestObject(request.params.id, 'NA', 'NA', 'NA');
+	
 	dbHandle.collection(
 		doc,
 		function(outer_error, collection) {
-			collection.find({qq:parseInt(request.params.id)}).toArray(
+			collection.find(requestObj).toArray(
 				function(inner_error, map_list) {
 					response.contentType('json');
 					var latest = '0';
@@ -81,26 +140,13 @@ app.get('/findlatest/:id', function(request, response) {
 });
 
 app.get('/findatdate/:id/:date', function(request, response) {
+	var requestObj = BuildRequestObject(request.params.id, 'NA', 
+		request.params.date, 'NA');
+	
 	dbHandle.collection(
 		doc, 
 		function(outer_error, collection) {
-			var padCount = 14 - request.params.date.length;
-			var floorPad = '';
-			var cellPad = '';
-			for(var i = 0; i < padCount; ++i)
-			{
-				floorPad += '0';
-				cellPad += '9';
-			}
-
-			collection.find(
-				{ $and:
-					[
-						{ qq: parseInt(request.params.id) },
-						{ log_id : {$gt : parseInt(request.params.date + floorPad) } },
-						{ log_id : {$lt : parseInt(request.params.date + cellPad) } }
-					]
-				}).toArray( function(inner_error, map_list) {
+			collection.find(requestObj).toArray( function(inner_error, map_list) {
 						response.contentType('json');
 						response.send(RemoveRawProp(map_list));
 					}); 
