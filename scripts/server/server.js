@@ -1,4 +1,5 @@
 var 
+	path = require('path'),
 	http = require('http'),
 	express = require('express'),
 	connect = require('connect'),
@@ -12,12 +13,14 @@ var
 dbHandle.open(function() {
 	console.log('** Connected to MongoDB **');
 });
+
+__dirname = path.normalize(__dirname + '/../..');
 	
 app
 	.use(connect.logger('dev'))
 	.use(connect.errorHandler())
 	.use(connect.bodyParser())
-	.use(express.static(__dirname + '/public/html_project_ln'));
+	.use(express.static(__dirname));
 app.get('/:doc/find/:id', function(request, response) {	
 	//response.send('Hello Express\n');
 	//response.redirect('/d3_test.html');
@@ -45,4 +48,4 @@ app.delete('/', function(request, response) {
 
 server.listen(3000);
 
-console.log( 'Express server listening on port %d in %s mode in folder %s', server.address().port, app.settings.env, __dirname + '/public' );
+console.log( 'Express server listening on port %d in %s mode in folder %s', server.address().port, app.settings.env, __dirname );
