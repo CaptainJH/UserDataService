@@ -3,19 +3,21 @@
 <head>
 <meta charset="utf-8">
 <title>Task list</title>
-<link rel="stylesheet" type="text/css" href="styles/tasks.css"
-	media="screen" />
+<link rel="stylesheet" type="text/css" href="styles/tasks.css" />
+<link rel="stylesheet" type="text/css" href="styles/d3_styles.css"/>
 <script src="scripts/libs/jquery-2.1.0.js"></script>
 <script src="scripts/libs/jquery-tmpl.js"></script>
 <script src="scripts/libs/jquery.validate.js"></script>
 <script src="scripts/libs/jquery-serialization.js"></script>
 <script src="scripts/libs/tasks-controller.js"></script>
+<script src="scripts/libs/d3.js"></script>
 </head>
 <body>
 	<header>
 		<span>Task list</span>
 	</header>
 	<main id="taskPage">
+		<section id="d3_title_area" style="position : relative; height: 200px; margin-left : 0px"></section>
 		<section id="taskCreation" class="not">
 			<form id="taskForm">
 				<div>
@@ -86,7 +88,7 @@
 $(document).ready(function(){
 	tasksController.init($('#taskPage'));
 
-	var url = 'ws://localhost:3001';
+	var url = 'ws://192.168.1.7:3001';
 	var socket = new WebSocket(url);
 	console.log(socket);
 	socket.onopen = function(ev) {
@@ -100,14 +102,107 @@ $(document).ready(function(){
 	};
 	
 	socket.onmessage = function(ev) {
-		console.log('onmessage');
-		console.log(ev);
+		//console.log('onmessage');
+		//console.log(ev);
 		console.log(ev.data);
 		
-		//socket.send('hello');
-		var quest = { qq : 0, extra : 'hello!'};
-		socket.send(JSON.stringify(quest));
+		var obj = JSON.parse(ev.data);
+		if(obj.msg === 'count')
+		{
+			data.shift();
+			push(data, obj.ret);
+			render(data);
+		}
+		
 	};
+	
+	////d3 drawing
+	var id= 0, 
+		data = [], 
+		duration = 500, 
+		chartHeight = 175, 
+		chartWidth = 680;
+	
+	for(var i = 0; i < 20; i++) push(data, 0);   
+
+	function render(data) {
+		var selection = d3.select("#d3_title_area")
+				.selectAll("div.v-bar")
+				.data(data, function(d){return d.id;}); 
+
+		// enter
+		selection.enter()
+				.append("div")
+					.attr("class", "v-bar")
+					.style("position", "absolute")
+					.style("top", chartHeight + "px")
+					.style("left", function(d, i){
+						return barLeft(i+1) + "px"; 
+					})
+					.style("height", "0px")
+				.append("span");
+
+		// update
+		selection
+			.transition().duration(duration) 
+				.style("top", function (d) { 
+					return chartHeight - barHeight(d) + "px"; 
+				})
+				.style("left", function(d, i){
+					return barLeft(i) + "px";
+				})
+				.style("height", function (d) { 
+					return barHeight(d) + "px"; 
+				})
+				.select("span")
+					.text(function (d) {return d.val;});
+
+		// exit
+		selection.exit()
+				.transition().duration(duration) 
+				.style("left", function(d, i){
+					return barLeft(-1) + "px"; 
+				})
+				.remove(); 
+	}
+
+	function push(data, val) {
+		data.push({
+			id: ++id,
+			val : val, 
+			value: (val / 20) * chartHeight
+		});
+	}
+
+	function barLeft(i) {
+		return i * (30 + 2);
+	}
+
+	function barHeight(d) {
+		return d.value;
+	}
+
+	var time = 0;
+	setInterval(function () {
+		time = (++time) % 24;
+		var dateText = time.toString();
+		if(time < 10)
+			dateText = '0' + dateText;
+		
+		dateText = '20140420' + dateText;
+		var cmd = { msg : 'count', qq : 'NA', mac : 'NA', date : dateText, info : 'NA' , extra : 'hello!'};
+		socket.send(JSON.stringify(cmd));
+	}, 4000);
+
+	render(data);
+
+	d3.select("#d3_title_area")
+	   .append("div")
+		   .attr("class", "baseline")
+		   .style("position", "absolute")
+		   .style("top", chartHeight + "px")
+		   .style("left", "0px")
+		   .style("width", chartWidth + "px");
 });
 
 </script>

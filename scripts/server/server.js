@@ -48,16 +48,6 @@ app.get('/', function(request, response) {
 	response.sendfile(__dirname + '/client.html');
 });
 
-//// websocket stuff
-wss.on('connection', function(ws) {
-	ws.on('message', function(message) {
-		var obj = JSON.parse(message);
-		console.log(obj);
-		console.log('received: %s', message);
-	});
-	ws.send('something');
-});
-
 ///// CRUD
 function BuildRequestObject(id, macAddress, date, info)
 {
@@ -100,98 +90,98 @@ function BuildRequestObject(id, macAddress, date, info)
 	//console.log(requestObj);
 	return requestObj;
 }
-app.get('/find/:id/:mac/:date/:info', function(request, response) {
-	var requestObj = BuildRequestObject(request.params.id,
-		request.params.mac,
-		request.params.date,
-		request.params.info);
+
+function Find(id, mac, date, info, callback) {
+	var requestObj = BuildRequestObject(id, mac, date, info);
 	
 	dbHandle.collection(
-		doc, 
-		function(outer_error, collection) {
-			collection.find(requestObj).toArray( function(inner_error, map_list) {
-						response.contentType('json');
-						response.send(RemoveRawProp(map_list));
-					}); 
+	doc, 
+	function(outer_error, collection) {
+		collection.find(requestObj).toArray( function(inner_error, map_list) {
+					callback(inner_error, map_list);
+				}); 
+	});
+	
+	return [];
+}
+
+function Distinct(key, callback) {
+	dbHandle.collection(
+	doc,
+	function(outer_error, collection) {
+		collection.distinct(key, function(inner_error, map_list) {
+			callback(inner_error, map_list);
+		});
+	});
+}
+
+function Count(id, mac, date, info, callback) {
+	var requestObj = BuildRequestObject(id, mac, date, info);
+	
+	dbHandle.collection(
+	doc, 
+	function(outer_error, collection) {
+		collection.count(requestObj, function(inner_error, count) {
+			callback(inner_error, count);
+		});
+	});
+}
+
+app.get('/find/:id/:mac/:date/:info', function(request, response) {
+	Find(request.params.id, request.params.mac,
+		request.params.date, request.params.info, function(error, map_list){
+				response.contentType('json');
+				response.send(RemoveRawProp(map_list));
 		});
 });
 
 app.get('/findall/:id', function(request, response) {	
-	var requestObj = BuildRequestObject(request.params.id, 'NA', 'NA', 'NA');
-	
-	dbHandle.collection(
-		doc,
-		function(outer_error, collection) {
-			collection.find(requestObj).toArray(
-				function(inner_error, map_list) {
-					response.contentType('json');
-					response.send(RemoveRawProp(map_list));
-				});
+	Find(request.params.id, 'NA', 'NA', 'NA', 
+		function(error, map_list){
+			response.contentType('json');
+			response.send(RemoveRawProp(map_list));
 		});
 });
 
 app.get('/findlatest/:id', function(request, response) {
-	var requestObj = BuildRequestObject(request.params.id, 'NA', 'NA', 'NA');
-	
-	dbHandle.collection(
-		doc,
-		function(outer_error, collection) {
-			collection.find(requestObj).toArray(
-				function(inner_error, map_list) {
-					response.contentType('json');
-					var latest = '0';
-					for(var ele in map_list)
-					{
-						if(map_list[ele].log_id > map_list[latest].log_id)
-						{
-							latest = ele;
-						}
-					}
-					response.send(RemoveRawProp(map_list[latest]));
-				});
-		});
+	Find(request.params.id, 'NA', 'NA', 'NA', 
+		function(error, map_list){
+			response.contentType('json');
+			var latest = '0';
+			for(var ele in map_list)
+			{
+				if(map_list[ele].log_id > map_list[latest].log_id)
+				{
+					latest = ele;
+				}
+			}
+			response.send(RemoveRawProp(map_list[latest]));
+		});	
 });
 
 app.get('/findatdate/:id/:date', function(request, response) {
-	var requestObj = BuildRequestObject(request.params.id, 'NA', 
-		request.params.date, 'NA');
-	
-	dbHandle.collection(
-		doc, 
-		function(outer_error, collection) {
-			collection.find(requestObj).toArray( function(inner_error, map_list) {
-						response.contentType('json');
-						response.send(RemoveRawProp(map_list));
-					}); 
+	Find(request.params.id, 'NA', request.params.date, 'NA', 
+		function(error, map_list){
+			response.contentType('json');
+			response.send(RemoveRawProp(map_list));
 		});
 });
 
 app.get('/distinct/:key', function(request, response) {
 	var key = request.params.key;
 	
-	dbHandle.collection(
-		doc, 
-		function(outer_error, collection) {
-			collection.distinct(key, function(inner_error, map_list) {
-				response.contentType('json');
-				response.send(map_list);
-			});
-		});
+	Distinct(key, function(error, map_list) {
+		response.contentType('json');
+		response.send(map_list);
+	});
+	
 });
 
 app.get('/count/:id/:mac/:date/:info', function(request, response) {
-	var requestObj = BuildRequestObject(request.params.id,
-		request.params.mac,
-		request.params.date,
-		request.params.info);
-		
-	dbHandle.collection(
-		doc, 
-		function(outer_error, collection) {
-			collection.count(requestObj, function(inner_error, count) {
-						response.contentType('text/plain');
-						response.send(count.toString());
-					}); 
+	Count(request.params.id, request.params.mac,
+		request.params.date, request.params.info, function(error, count) {
+			response.contentType('text/plain');
+			response.send(count.toString());
 		});
 });
 
@@ -203,6 +193,23 @@ app.put('/', function(request, response) {
 });
 app.delete('/', function(request, response) {
 	response.send('Delete response!\n');
+});
+
+//// websocket stuff
+wss.on('connection', function(ws) {
+	ws.on('message', function(message) {
+		var obj = JSON.parse(message);
+		//console.log(obj);
+		//console.log('received: %s', message);
+		
+		if(obj.msg === 'count')
+		{
+			Count(obj.qq, obj.mac, obj.date, obj.info, function(error, count) {
+				ws.send(JSON.stringify({ msg : 'count', ret : count} ) );
+			});
+		}
+	});
+	//ws.send('something');
 });
 
 server.listen(3000);
