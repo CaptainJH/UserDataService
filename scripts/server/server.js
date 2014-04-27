@@ -5,6 +5,8 @@ var
 	connect = require('connect'),
 	app = express(),
 	server = http.createServer(app),
+	WebSocketServer = require('ws').Server,
+	wss = new WebSocketServer({port : 3001}),
 	doc = 'UserReport',
 	
 	mongodb = require('mongodb'),
@@ -42,7 +44,18 @@ app
 	.use(express.static(__dirname));
 
 app.get('/', function(request, response) {
-	response.redirect('/client.html');
+	//response.redirect('/client.html');
+	response.sendfile(__dirname + '/client.html');
+});
+
+//// websocket stuff
+wss.on('connection', function(ws) {
+	ws.on('message', function(message) {
+		var obj = JSON.parse(message);
+		console.log(obj);
+		console.log('received: %s', message);
+	});
+	ws.send('something');
 });
 
 ///// CRUD

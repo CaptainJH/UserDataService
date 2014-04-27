@@ -85,6 +85,29 @@
 <script>
 $(document).ready(function(){
 	tasksController.init($('#taskPage'));
+
+	var url = 'ws://localhost:3001';
+	var socket = new WebSocket(url);
+	console.log(socket);
+	socket.onopen = function(ev) {
+		console.log('onopen');
+		console.log(ev);
+	};
+	
+	socket.onclose = function(ev) {
+		console.log('onclose');
+		console.log(ev);
+	};
+	
+	socket.onmessage = function(ev) {
+		console.log('onmessage');
+		console.log(ev);
+		console.log(ev.data);
+		
+		//socket.send('hello');
+		var quest = { qq : 0, extra : 'hello!'};
+		socket.send(JSON.stringify(quest));
+	};
 });
 
 </script>
