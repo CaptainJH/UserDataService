@@ -205,7 +205,7 @@ wss.on('connection', function(ws) {
 		if(obj.msg === 'count')
 		{
 			Count(obj.qq, obj.mac, obj.date, obj.info, function(error, count) {
-				ws.send(JSON.stringify({ msg : 'count', ret : count} ) );
+				ws.send(JSON.stringify({ msg : 'count', ret : count, date : obj.date } ) );
 			});
 		}
 	});

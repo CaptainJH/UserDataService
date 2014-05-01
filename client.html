@@ -93,24 +93,25 @@ $(document).ready(function(){
 	console.log(socket);
 	socket.onopen = function(ev) {
 		console.log('onopen');
-		console.log(ev);
+		//console.log(ev);
 	};
 	
 	socket.onclose = function(ev) {
 		console.log('onclose');
-		console.log(ev);
+		//console.log(ev);
 	};
 	
 	socket.onmessage = function(ev) {
 		//console.log('onmessage');
 		//console.log(ev);
-		console.log(ev.data);
+		//console.log(ev.data);
 		
 		var obj = JSON.parse(ev.data);
 		if(obj.msg === 'count')
 		{
-			data.shift();
-			push(data, obj.ret);
+			if(data.length == 20)
+				data.shift();
+			push(data, obj);
 			render(data);
 		}
 		
@@ -123,7 +124,7 @@ $(document).ready(function(){
 		chartHeight = 175, 
 		chartWidth = 680;
 	
-	for(var i = 0; i < 20; i++) push(data, 0);   
+	//for(var i = 0; i < 20; i++) push(data, {ret : 0, date : 0);   
 
 	function render(data) {
 		var selection = d3.select("#d3_title_area")
@@ -140,11 +141,17 @@ $(document).ready(function(){
 						return barLeft(i+1) + "px"; 
 					})
 					.style("height", "0px")
-				.append("span");
+					.append("p")
+					.call(function(s) {
+						s.append("span").attr("id", "top");
+						s.append("span").attr("id", "btm");
+					});
+					// we can also use this to replace the above call(), but a little hacky
+					//.html("<span id='top'></span><span id='btm'></span>");
 
 		// update
 		selection
-			.transition().duration(duration) 
+			.transition().duration(duration)
 				.style("top", function (d) { 
 					return chartHeight - barHeight(d) + "px"; 
 				})
@@ -154,9 +161,27 @@ $(document).ready(function(){
 				.style("height", function (d) { 
 					return barHeight(d) + "px"; 
 				})
-				.select("span")
-					.text(function (d) {return d.val;});
-
+				.selectAll("span")
+					.each(function (d, i) {
+						var data = d3.select(this.parentNode).datum();
+						if( i === 0)
+							d3.select(this).text(function() {
+								if(data.val == "0")
+									return "";
+								return data.val;
+							});
+						else
+							d3.select(this)
+								.text(function() {return data.date.replace(/20140420/, "");})
+								.style("position", "absolute")
+								.style("left", function() {
+									return 8 + "px";
+								})
+								.style("top", function(){
+									return data.barH + "px";
+								});
+					});
+					
 		// exit
 		selection.exit()
 				.transition().duration(duration) 
@@ -169,8 +194,9 @@ $(document).ready(function(){
 	function push(data, val) {
 		data.push({
 			id: ++id,
-			val : val, 
-			value: (val / 20) * chartHeight
+			val : val.ret, 
+			barH : (val.ret / 20) * chartHeight,
+			date : val.date
 		});
 	}
 
@@ -179,7 +205,7 @@ $(document).ready(function(){
 	}
 
 	function barHeight(d) {
-		return d.value;
+		return d.barH;
 	}
 
 	var time = 0;
